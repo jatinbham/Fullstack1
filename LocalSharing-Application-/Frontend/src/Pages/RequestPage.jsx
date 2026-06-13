@@ -71,7 +71,7 @@ export default function RequestPage() {
         userId: userData?._id || null,
       };
 
-      const res = await fetch("http://localhost:5000/api/requests/matching", {
+      const res = await fetch("http://localhost:5001/api/requests/matching", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -144,7 +144,8 @@ export default function RequestPage() {
 
       {/* MAIN CONTENT */}
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 24px 60px" }}>
-        <div className="main-grid" style={{ display: "grid", gridTemplateColumn          {/* FORM */}
+        <div className="main-grid" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 32 }}>
+          {/* FORM */}
           <form onSubmit={handleSubmit} className="form-card glass-strong" style={{ borderRadius: 24, padding: 32 }}>
             {errorMsg && (
               <div style={{ color: "#f87171", fontSize: 13, background: "rgba(229,62,62,0.08)", border: "1px solid rgba(229,62,62,0.2)", padding: 12, borderRadius: 12, marginBottom: 20 }}>

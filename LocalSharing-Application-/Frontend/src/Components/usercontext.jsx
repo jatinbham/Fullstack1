@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const UserContext = createContext(null);
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "http://localhost:5001/api";
 
 export function UserProvider({ children }) {
   const [userData, setUserData] = useState(null);

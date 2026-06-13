@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus, Droplet, Truck, Pill, MapPin, Clock, TrendingUp,
   AlertTriangle, CheckCircle2, ArrowUpRight, HeartPulse,
-  Activity, Award, Zap
+  Activity, Award, Zap, User, LogOut, Loader
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-//  Design tokens 
+const API = "http://localhost:5001";
+
+// Design tokens
 const COLOR = {
   primary: "#E5383B",
   primaryLight: "#fde8e8",
@@ -26,142 +28,60 @@ const COLOR = {
 };
 
 const S = {
-  shell: {
-    minHeight: "100vh",
-    background: COLOR.bg,
-    fontFamily: "'Inter', 'Segoe UI', sans-serif",
-    color: COLOR.text,
-  },
+  shell: { minHeight: "100vh", background: COLOR.bg, fontFamily: "'Inter','Segoe UI',sans-serif", color: COLOR.text },
   header: {
-    background: COLOR.card,
-    borderBottom: `1px solid ${COLOR.border}`,
-    padding: "0 24px",
-    height: 68,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "sticky",
-    top: 0,
-    zIndex: 10,
+    background: "rgba(10,10,15,.85)", backdropFilter: "blur(12px)",
+    borderBottom: `1px solid ${COLOR.border}`, padding: "0 24px",
+    height: 68, display: "flex", alignItems: "center",
+    justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10,
   },
-  logo: {
-    fontWeight: 800,
-    fontSize: 20,
-    background: COLOR.gradHero,
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    backgroundClip: "text",
-    letterSpacing: "-0.5px",
-  },
+  logo: { fontWeight: 800, fontSize: 20, background: COLOR.gradHero, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", letterSpacing: "-0.5px" },
   main: { maxWidth: 1200, margin: "0 auto", padding: "28px 20px 48px" },
   pageTitle: { fontSize: 26, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 2 },
   pageSub: { fontSize: 13, color: COLOR.muted, marginBottom: 28 },
-  row: (gap = 16) => ({ display: "flex", gap, flexWrap: "wrap" }),
-  card: (extra = {}) => ({
-    background: COLOR.card,
-    border: `1px solid ${COLOR.border}`,
-    borderRadius: 20,
-    padding: 24,
-    boxShadow: "0 2px 12px rgba(0,0,0,.05)",
-    ...extra,
-  }),
-
-  // Buttons
-  btnPrimary: {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    padding: "10px 18px", borderRadius: 10, border: "none",
-    background: COLOR.gradHero, color: "#fff",
-    fontWeight: 600, fontSize: 14, cursor: "pointer",
-  },
-  btnOutline: {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    padding: "10px 16px", borderRadius: 10,
-    border: `1.5px solid ${COLOR.border}`, background: "transparent",
-    fontWeight: 500, fontSize: 14, cursor: "pointer", color: COLOR.text,
-  },
-  btnSm: {
-    padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${COLOR.border}`,
-    background: "transparent", fontWeight: 500, fontSize: 12, cursor: "pointer",
-    color: COLOR.text,
-  },
-  tag: (bg, color) => ({
-    fontSize: 10, fontWeight: 700, padding: "3px 8px",
-    borderRadius: 99, background: bg, color,
-  }),
-  iconBox: (bg, size = 48, radius = 12) => ({
-    width: size, height: size, borderRadius: radius,
-    background: bg, display: "grid", placeItems: "center", flexShrink: 0,
-  }),
+  card: (extra = {}) => ({ background: COLOR.card, border: `1px solid ${COLOR.border}`, borderRadius: 20, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,.05)", ...extra }),
+  btnSm: { padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${COLOR.border}`, background: "transparent", fontWeight: 500, fontSize: 12, cursor: "pointer", color: COLOR.text },
+  tag: (bg, color) => ({ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 99, background: bg, color }),
+  iconBox: (bg, size = 48, radius = 12) => ({ width: size, height: size, borderRadius: radius, background: bg, display: "grid", placeItems: "center", flexShrink: 0 }),
 };
 
-// Helpers 
-function useWindowWidth() {
-  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
-  return w;
+const CSS = `
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0f; font-family:'Inter','Segoe UI',sans-serif; color:#e8e8f0; overflow-x:hidden; }
+@keyframes pulse-ring { 0%{transform:scale(1);opacity:.6} 100%{transform:scale(1.55);opacity:0} }
+@keyframes spin { to{transform:rotate(360deg)} }
+`;
+if (typeof document !== "undefined" && !document.getElementById("resq-dash-styles")) {
+  const el = document.createElement("style");
+  el.id = "resq-dash-styles";
+  el.textContent = CSS;
+  document.head.appendChild(el);
 }
 
-function Grid({ cols = 1, gap = 16, children, style = {} }) {
-  return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: `repeat(${cols}, 1fr)`,
-      gap,
-      ...style,
-    }}>
-      {children}
-    </div>
-  );
-}
+// Resource type → icon + color mapping
+const typeMap = {
+  Blood:     { icon: Droplet,  color: COLOR.primary,   bg: COLOR.primaryLight },
+  Transport: { icon: Truck,    color: COLOR.warning,   bg: COLOR.warningLight },
+  Medicine:  { icon: Pill,     color: COLOR.secondary, bg: COLOR.secondaryLight },
+  Food:      { icon: Plus,     color: COLOR.success,   bg: COLOR.successLight },
+  Shelter:   { icon: MapPin,   color: COLOR.muted,     bg: "rgba(255,255,255,.08)" },
+};
+
+const urgColor = { CRITICAL: "primary", HIGH: "warning", MEDIUM: "secondary", LOW: "success" };
 
 function Badge({ color, label }) {
   const map = {
-    primary: { bg: COLOR.primary, fg: "#fff" },
-    warning: { bg: COLOR.warning, fg: "#fff" },
-    success: { bg: COLOR.success, fg: "#fff" },
+    primary:   { bg: COLOR.primary,   fg: "#fff" },
+    warning:   { bg: COLOR.warning,   fg: "#fff" },
+    success:   { bg: COLOR.success,   fg: "#fff" },
     secondary: { bg: COLOR.secondary, fg: "#fff" },
   };
   const c = map[color] || map.primary;
   return <span style={S.tag(c.bg, c.fg)}>{label}</span>;
 }
 
-// SOS pulse animation (keyframes injected once)
-const CSS = `
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { margin: 0; padding: 0; background: #0a0a0f; }
-body { 
-  margin: 0; 
-  padding: 0; 
-  background: #0a0a0f; 
-  font-family: 'Inter', 'Segoe UI', sans-serif;
-  color: #e8e8f0;
-  overflow-x: hidden;
-}
-#root { width: 100%; }
- 
-@keyframes pulse-ring {
-  0%   { transform: scale(1);   opacity: .6; }
-  100% { transform: scale(1.55); opacity: 0; }
-}
-  
-
-
-@keyframes pulse-ring {
-  0%   { transform: scale(1);   opacity: .6; }
-  100% { transform: scale(1.55); opacity: 0; }
-}
-@keyframes spin-slow { to { transform: rotate(360deg); } }
-`;
-if (typeof document !== "undefined" && !document.getElementById("resq-styles")) {
-  const el = document.createElement("style");
-  el.id = "resq-styles";
-  el.textContent = CSS;
-  document.head.appendChild(el);
-}
-
-// Sub-components 
 function AlertRow({ color, title, sub }) {
-  const accent = { primary: COLOR.primary, warning: COLOR.warning, success: COLOR.success }[color];
+  const accent = { primary: COLOR.primary, warning: COLOR.warning, success: COLOR.success }[color] || COLOR.muted;
   return (
     <div style={{ display: "flex", gap: 12 }}>
       <div style={{ width: 3, borderRadius: 99, background: accent, flexShrink: 0 }} />
@@ -173,71 +93,152 @@ function AlertRow({ color, title, sub }) {
   );
 }
 
-// Main Dashboard
+function Skeleton({ w = "100%", h = 18, radius = 8 }) {
+  return <div style={{ width: w, height: h, borderRadius: radius, background: "rgba(255,255,255,.07)", animation: "pulse-ring 1.4s ease-out infinite" }} />;
+}
+
+// ── Main Dashboard ──
 export default function Dashboard() {
+  const navigate = useNavigate();
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
-  const stats = [
-    { icon: Activity, label: "Lives assisted", value: "27", delta: "+3 this week", color: COLOR.primary, bg: COLOR.primaryLight },
-    { icon: Clock, label: "Avg response", value: "2m 41s", delta: "−18s vs last", color: COLOR.secondary, bg: COLOR.secondaryLight },
-    { icon: Award, label: "Trust score", value: "4.92", delta: "Top 5% in city", color: COLOR.success, bg: COLOR.successLight },
-    { icon: Zap, label: "Streak", value: "12 days", delta: "Keep it up!", color: COLOR.warning, bg: COLOR.warningLight },
-  ];
+  const [user,     setUser]     = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [alerts,   setAlerts]   = useState([]);
+  const [loading,  setLoading]  = useState({ user: true, requests: true, alerts: true });
+  const [error,    setError]    = useState({});
 
-  const requests = [
-    {
-      icon: Droplet, title: "O-negative blood needed", urg: "CRITICAL",
-      dist: "1.2 km", time: "2 min ago", who: "Apollo Hospital · ICU",
-      color: COLOR.primary, bg: COLOR.primaryLight, urgColor: "primary",
-    },
-    {
-      icon: Truck, title: "Transport to dialysis center", urg: "HIGH",
-      dist: "0.8 km", time: "8 min ago", who: "Mrs. Mehta · Age 64",
-      color: COLOR.warning, bg: COLOR.warningLight, urgColor: "warning",
-    },
-    {
-      icon: Pill, title: "Insulin pen (NovoRapid)", urg: "MEDIUM",
-      dist: "2.4 km", time: "14 min ago", who: "Family of 3",
-      color: COLOR.secondary, bg: COLOR.secondaryLight, urgColor: "secondary",
-    },
+  const token = localStorage.getItem("token");
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!token) navigate("/login");
+  }, [token, navigate]);
+
+  // Fetch user profile
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => {
+        if (r.status === 401) { localStorage.removeItem("token"); navigate("/login"); return; }
+        return r.json();
+      })
+      .then(data => { if (data) setUser(data); })
+      .catch(() => setError(e => ({ ...e, user: "Could not load profile" })))
+      .finally(() => setLoading(l => ({ ...l, user: false })));
+  }, [token, navigate]);
+
+  // Fetch nearby requests
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/requests`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => setRequests(Array.isArray(data) ? data.slice(0, 5) : []))
+      .catch(() => setError(e => ({ ...e, requests: "Could not load requests" })))
+      .finally(() => setLoading(l => ({ ...l, requests: false })));
+  }, [token]);
+
+  // Fetch alerts
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/alerts`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => setAlerts(Array.isArray(data) ? data.slice(0, 4) : []))
+      .catch(() => setError(e => ({ ...e, alerts: "Could not load alerts" })))
+      .finally(() => setLoading(l => ({ ...l, alerts: false })));
+  }, [token]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
+  // Derive greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const displayName = user?.name || "...";
+  const displayRole = user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "";
+
+  // Static stats (can be wired to a /api/stats endpoint later)
+  const stats = [
+    { icon: Activity, label: "Lives assisted", value: "27",    delta: "+3 this week",    color: COLOR.primary,   bg: COLOR.primaryLight },
+    { icon: Clock,    label: "Avg response",   value: "2m 41s", delta: "−18s vs last",   color: COLOR.secondary, bg: COLOR.secondaryLight },
+    { icon: Award,    label: "Trust score",    value: "4.92",   delta: "Top 5% in city", color: COLOR.success,   bg: COLOR.successLight },
+    { icon: Zap,      label: "Streak",         value: "12 days",delta: "Keep it up!",    color: COLOR.warning,   bg: COLOR.warningLight },
   ];
 
   const quickActions = [
-    { icon: Droplet, label: "Donate blood", to: "/donate" },
-    { icon: Plus, label: "Request help", to: "/request" },
-    { icon: MapPin, label: "Live map", to: "/map" },
-    { icon: CheckCircle2, label: "My impact", to: "/analytics" },
+    { icon: Droplet,       label: "Donate blood",  to: "/donate" },
+    { icon: Plus,          label: "Request help",  to: "/request" },
+    { icon: MapPin,        label: "Live map",      to: "/map" },
+    { icon: CheckCircle2,  label: "My impact",     to: "/analytics" },
   ];
+
+  // Alert color mapping by type
+  const alertColorMap = { warning: "warning", info: "primary", success: "success" };
 
   return (
     <div style={S.shell}>
+      {/* Header */}
+      <header style={S.header}>
+        <Link to="/" style={{ textDecoration: "none" }}>
+          <span style={S.logo}>ResQ Link</span>
+        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {loading.user
+            ? <Skeleton w={120} h={32} radius={10} />
+            : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ ...S.iconBox("rgba(229,56,59,.15)", 36, 10) }}>
+                  <User size={16} color={COLOR.primary} />
+                </div>
+                <div style={{ lineHeight: 1.2 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{displayName}</div>
+                  <div style={{ fontSize: 11, color: COLOR.muted }}>{displayRole}</div>
+                </div>
+              </div>
+            )
+          }
+          <button
+            onClick={handleLogout}
+            style={{ ...S.btnSm, display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <LogOut size={13} /> Logout
+          </button>
+        </div>
+      </header>
 
       {/* Main */}
       <main style={S.main}>
-        <div style={S.pageTitle}>Good evening, Aarav</div>
-        <div style={S.pageSub}>3 active requests near you · 12 verified responders online</div>
+        {/* Page title */}
+        <div style={S.pageTitle}>
+          {loading.user
+            ? <Skeleton w={280} h={28} />
+            : `${greeting}, ${displayName.split(" ")[0]}`
+          }
+        </div>
+        <div style={S.pageSub}>
+          {loading.requests
+            ? <Skeleton w={220} h={14} />
+            : `${requests.length} active requests near you · 12 verified responders online`
+          }
+        </div>
 
-        {/* Hero row  */}
+        {/* Hero row */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: 16, marginBottom: 20 }}>
           {/* Community status */}
-          <div style={{
-            borderRadius: 24, padding: "36px 32px",
-            background: COLOR.gradHero, color: "#fff",
-            position: "relative", overflow: "hidden",
-            boxShadow: "0 8px 32px rgba(229,56,59,.35)",
-          }}>
-            <div style={{
-              position: "absolute", top: -80, right: -80,
-              width: 260, height: 260, borderRadius: "50%",
-              background: "rgba(255,255,255,.1)", filter: "blur(40px)",
-            }} />
+          <div style={{ borderRadius: 24, padding: "36px 32px", background: COLOR.gradHero, color: "#fff", position: "relative", overflow: "hidden", boxShadow: "0 8px 32px rgba(229,56,59,.35)" }}>
+            <div style={{ position: "absolute", top: -80, right: -80, width: 260, height: 260, borderRadius: "50%", background: "rgba(255,255,255,.1)", filter: "blur(40px)" }} />
             <div style={{ position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, opacity: .9, marginBottom: 12 }}>
                 <span style={{ position: "relative", display: "inline-flex", width: 8, height: 8 }}>
-                  <span style={{
-                    position: "absolute", inset: 0, borderRadius: "50%",
-                    background: "#fff", animation: "pulse-ring 1.4s ease-out infinite",
-                  }} />
+                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#fff", animation: "pulse-ring 1.4s ease-out infinite" }} />
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff", display: "block" }} />
                 </span>
                 LIVE · COMMUNITY STATUS
@@ -250,11 +251,7 @@ export default function Dashboard() {
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginTop: 24, maxWidth: 340 }}>
                 {[{ v: "248", l: "Donors" }, { v: "42", l: "Shelters" }, { v: "<3m", l: "Avg ETA" }].map(s => (
-                  <div key={s.l} style={{
-                    borderRadius: 14, background: "rgba(255,255,255,.13)",
-                    backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,.18)",
-                    padding: "12px 14px",
-                  }}>
+                  <div key={s.l} style={{ borderRadius: 14, background: "rgba(255,255,255,.13)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,.18)", padding: "12px 14px" }}>
                     <div style={{ fontSize: 22, fontWeight: 800 }}>{s.v}</div>
                     <div style={{ fontSize: 11, opacity: .8, marginTop: 2 }}>{s.l}</div>
                   </div>
@@ -263,20 +260,11 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* SOS button */}
+          {/* SOS */}
           <div style={{ ...S.card(), display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
             <div style={{ position: "relative", width: 120, height: 120, cursor: "pointer" }}>
-              <span style={{
-                position: "absolute", inset: 0, borderRadius: "50%",
-                background: `${COLOR.primary}50`,
-                animation: "pulse-ring 1.6s ease-out infinite",
-              }} />
-              <div style={{
-                position: "absolute", inset: 0, borderRadius: "50%",
-                background: COLOR.gradHero,
-                display: "grid", placeItems: "center",
-                boxShadow: `0 0 32px ${COLOR.primary}80`,
-              }}>
+              <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: `${COLOR.primary}50`, animation: "pulse-ring 1.6s ease-out infinite" }} />
+              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: COLOR.gradHero, display: "grid", placeItems: "center", boxShadow: `0 0 32px ${COLOR.primary}80` }}>
                 <HeartPulse size={40} color="#fff" />
               </div>
             </div>
@@ -287,13 +275,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── Stat strip ── */}
+        {/* Stat strip */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 16, marginBottom: 20 }}>
           {stats.map(s => (
             <div key={s.label} style={S.card()}>
-              <div style={S.iconBox(s.bg)}>
-                <s.icon size={20} color={s.color} />
-              </div>
+              <div style={S.iconBox(s.bg)}><s.icon size={20} color={s.color} /></div>
               <div style={{ fontSize: 24, fontWeight: 800, marginTop: 14 }}>{s.value}</div>
               <div style={{ fontSize: 12, color: COLOR.muted, marginTop: 2 }}>{s.label}</div>
               <div style={{ fontSize: 12, color: COLOR.success, marginTop: 8, display: "flex", alignItems: "center", gap: 4 }}>
@@ -303,52 +289,70 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Bottom grid  */}
+        {/* Bottom grid */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: 16 }}>
-          {/* Active requests */}
+
+          {/* Active requests — LIVE from backend */}
           <div style={S.card()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Active requests near you</h3>
-              <a href="#" style={{ fontSize: 12, color: COLOR.primary, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+              <Link to="/map" style={{ fontSize: 12, color: COLOR.primary, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
                 Open map <ArrowUpRight size={12} />
-              </a>
+              </Link>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {requests.map(r => (
-                <div key={r.title} style={{
-                  display: "flex", alignItems: "center", gap: 14,
-                  padding: 14, borderRadius: 14, background: COLOR.bg,
-                  border: `1px solid ${COLOR.border}`,
-                }}>
-                  <div style={S.iconBox(r.bg)}>
-                    <r.icon size={22} color={r.color} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 700, fontSize: 14 }}>{r.title}</span>
-                      <Badge color={r.urgColor} label={r.urg} />
+
+            {loading.requests ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[1, 2, 3].map(i => <Skeleton key={i} h={72} radius={14} />)}
+              </div>
+            ) : error.requests ? (
+              <div style={{ color: COLOR.primary, fontSize: 13, padding: "16px 0" }}>{error.requests}</div>
+            ) : requests.length === 0 ? (
+              <div style={{ color: COLOR.muted, fontSize: 13, padding: "24px 0", textAlign: "center" }}>
+                No active requests right now. Check back soon.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {requests.map(r => {
+                  const type = typeMap[r.resourceType] || typeMap["Blood"];
+                  const Icon = type.icon;
+                  const urg = r.urgency?.toUpperCase() || "MEDIUM";
+                  return (
+                    <div key={r._id} style={{ display: "flex", alignItems: "center", gap: 14, padding: 14, borderRadius: 14, background: COLOR.bg, border: `1px solid ${COLOR.border}` }}>
+                      <div style={S.iconBox(type.bg)}>
+                        <Icon size={22} color={type.color} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 700, fontSize: 14 }}>{r.title || r.resourceType}</span>
+                          <Badge color={urgColor[urg] || "secondary"} label={urg} />
+                        </div>
+                        <div style={{ fontSize: 12, color: COLOR.muted, marginTop: 3 }}>
+                          {r.requesterName || r.location || "Unknown"} · {r.distance ? `${r.distance} km` : ""} · {r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                        </div>
+                      </div>
+                      <button style={S.btnSm}>Accept</button>
                     </div>
-                    <div style={{ fontSize: 12, color: COLOR.muted, marginTop: 3 }}>
-                      {r.who} · {r.dist} · {r.time}
-                    </div>
-                  </div>
-                  <button style={S.btnSm}>Accept</button>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Side cards */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
             {/* Volunteer status */}
             <div style={S.card()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Volunteer status</h3>
-                <span style={S.tag(COLOR.successLight, COLOR.success)}>ON DUTY</span>
+                <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Your status</h3>
+                <span style={S.tag(COLOR.successLight, COLOR.success)}>
+                  {loading.user ? "..." : displayRole.toUpperCase()}
+                </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: COLOR.success, animation: "pulse-ring 1.4s ease-out infinite", display: "inline-block" }} />
-                Visible to nearby requests
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: COLOR.success, display: "inline-block" }} />
+                {loading.user ? <Skeleton w={160} h={14} /> : `Active · ${user?.location || "Location not set"}`}
               </div>
               <div style={{ marginTop: 16, height: 6, background: COLOR.border, borderRadius: 99, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: "68%", background: COLOR.gradHero, borderRadius: 99 }} />
@@ -358,30 +362,41 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Emergency alerts */}
+            {/* Emergency alerts — LIVE from backend */}
             <div style={S.card()}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                 <AlertTriangle size={16} color={COLOR.warning} />
                 <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>Emergency alerts</h3>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <AlertRow color="warning" title="Heavy rainfall warning" sub="Sector 22 · Next 6 hours" />
-                <AlertRow color="primary" title="Blood drive at Civil Hospital" sub="Tomorrow 9 AM – 4 PM" />
-                <AlertRow color="success" title="Shelter capacity restored" sub="Community Hall, Sec 14" />
-              </div>
+
+              {loading.alerts ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {[1, 2, 3].map(i => <Skeleton key={i} h={36} radius={8} />)}
+                </div>
+              ) : error.alerts ? (
+                <div style={{ color: COLOR.primary, fontSize: 13 }}>{error.alerts}</div>
+              ) : alerts.length === 0 ? (
+                <div style={{ color: COLOR.muted, fontSize: 13 }}>No active alerts in your area.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {alerts.map(a => (
+                    <AlertRow
+                      key={a._id}
+                      color={alertColorMap[a.type] || "warning"}
+                      title={a.title}
+                      sub={`${a.location || ""} · ${a.time || (a.createdAt ? new Date(a.createdAt).toLocaleDateString() : "")}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* ── Quick actions ── */}
+        {/* Quick actions */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 12, marginTop: 20 }}>
           {quickActions.map(q => (
-            <Link key={q.label} to={q.to} style={{
-              ...S.card({ padding: 16 }),
-              display: "flex", alignItems: "center", gap: 12,
-              textDecoration: "none", color: COLOR.text,
-              transition: "box-shadow .2s, transform .2s",
-            }}
+            <Link key={q.label} to={q.to} style={{ ...S.card({ padding: 16 }), display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: COLOR.text, transition: "box-shadow .2s, transform .2s" }}
               onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(0,0,0,.1)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(0,0,0,.05)"; e.currentTarget.style.transform = "none"; }}
             >

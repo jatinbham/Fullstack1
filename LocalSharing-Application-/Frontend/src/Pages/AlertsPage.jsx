@@ -98,7 +98,7 @@ export default function AlertsPage() {
     setAlertResponse(null);
 
     try {
-      const res = await fetch("http://localhost:5000/api/alerts/trigger", {
+      const res = await fetch("http://localhost:5001/api/alerts/trigger", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

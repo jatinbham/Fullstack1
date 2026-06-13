@@ -323,7 +323,7 @@ export default function BecomeDonor() {
         available: data.available,
       };
 
-      const res = await fetch("http://localhost:5000/api/donors/register", {
+      const res = await fetch("http://localhost:5001/api/donors/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

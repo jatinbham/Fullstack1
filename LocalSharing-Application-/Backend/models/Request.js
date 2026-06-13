@@ -3,8 +3,9 @@ const mongoose = require("mongoose");
 const RequestSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, required: true },
+  requestId: { type: String },
   location: { type: String, required: true },
-  resourceNeeded: { type: String, required: true }, // e.g. blood, food, medicine, shelter, transport, medical
+  resourceNeeded: { type: String, required: true },
   email: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String },
@@ -26,5 +27,8 @@ const RequestSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   createdAt: { type: Date, default: Date.now },
 });
+
+// Location is now a string
+
 
 module.exports = mongoose.model("Request", RequestSchema);

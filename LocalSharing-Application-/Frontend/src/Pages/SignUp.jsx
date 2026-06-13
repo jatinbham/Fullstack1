@@ -92,7 +92,25 @@ export default function SignupPage() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleStep2Continue = () => { if (validateForm()) setStep(3); };
+  const handleStep2Continue = async () => { 
+    if (validateForm()) {
+      setIsSubmitting(true);
+      try {
+        const res = await fetch("http://localhost:5001/api/auth/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contact: formData.phone || formData.email }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Failed to send OTP");
+        setStep(3);
+      } catch (err) {
+        setErrors({ phone: err.message || "Could not send OTP" });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } 
+  };
 
   // OTP handlers
   const handleOtpChange = (i, val) => {
@@ -129,9 +147,10 @@ export default function SignupPage() {
         password: formData.password,
         role: selectedRole,
         location: formData.location,
+        otp: otp.join(""),
       };
 
-      const res = await fetch("http://localhost:5000/api/auth/signup", {
+      const res = await fetch("http://localhost:5001/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

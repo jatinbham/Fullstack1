@@ -2,13 +2,13 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true },
-  password: { type: String, required: true },
-  role: { type: String, required: true, enum: ["requester", "volunteer", "provider", "ngo"] },
-  location: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
+  name:     { type: String, required: [true, "Name is required"] },
+  email:    { type: String, required: [true, "Email is required"], unique: true, lowercase: true, trim: true },
+  phone:    { type: String, required: [true, "Phone is required"], unique: true, trim: true },
+  password: { type: String, required: [true, "Password is required"] },
+  role:     { type: String, required: [true, "Role is required"], enum: ["requester", "volunteer", "provider", "ngo"] },
+  location: { type: String, required: [true, "Location is required"] },
+  createdAt:{ type: Date, default: Date.now },
 });
 
 // Hash password before saving
@@ -23,8 +23,8 @@ UserSchema.pre("save", async function (next) {
   }
 });
 
-// Compare password method
-UserSchema.methods.comparePassword = async function (enteredPassword) {
+// ✅ Fixed: was "comparePassword", controller expects "matchPassword"
+UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

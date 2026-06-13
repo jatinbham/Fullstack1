@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const API = "http://localhost:5001";
+
 // tiny design tokens 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@700&display=swap');
@@ -32,17 +34,13 @@ const CSS = `
 
   body { background: var(--bg); color: var(--fg); font-family: var(--font-body); min-height: 100vh; }
 
-  /* ── layout ── */
   .shell { max-width: 1100px; margin: 0 auto; padding: 32px 20px 60px; }
   .shell-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
   .shell-title { font-family: var(--font-display); font-size: clamp(22px,4vw,30px); font-weight: 700; }
   .shell-sub   { color: var(--muted); font-size: 14px; margin-top: 4px; }
 
-  /* ── glass card ── */
   .card { background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-glass); overflow: hidden; }
-  .card-glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); }
 
-  /* ── summary grid ── */
   .summary-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; margin-bottom: 24px; }
   @media(min-width:768px){ .summary-grid { grid-template-columns: repeat(4,1fr); } }
 
@@ -51,16 +49,13 @@ const CSS = `
   .stat-val   { font-size: 26px; font-weight: 700; }
   .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
-  /* ── request list ── */
   .list-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 24px 24px 12px; }
   .list-title  { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
 
-  /* ── tabs ── */
   .tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.06); border-radius: var(--radius-sm); padding: 4px; }
   .tab  { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: none; cursor: pointer; background: transparent; color: var(--muted); transition: all .18s; }
   .tab.active { background: var(--surface2); color: var(--fg); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 
-  /* ── request item ── */
   .req-list { padding: 0 16px 20px; display: flex; flex-direction: column; gap: 12px; }
   .req-item { border-radius: var(--radius-md); border: 1px solid var(--border); background: rgba(255,255,255,0.03); transition: border-color .2s, box-shadow .2s; }
   .req-item:hover { border-color: rgba(229,57,53,0.3); box-shadow: 0 2px 20px rgba(0,0,0,0.3); }
@@ -73,24 +68,19 @@ const CSS = `
   .req-sub  { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
   .req-sub svg { width: 12px; height: 12px; }
 
-  /* ── badge ── */
   .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
 
-  /* ── critical pill ── */
   .critical-pill { display: none; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--primary); background: rgba(229,57,53,0.12); padding: 5px 10px; border-radius: 8px; }
   @media(min-width:640px){ .critical-pill { display: flex; } }
 
-  /* ── chevron ── */
   .chevron { transition: transform .2s; flex-shrink: 0; color: var(--muted); }
   .chevron.open { transform: rotate(90deg); }
 
-  /* ── expanded ── */
   .req-detail { padding: 0 18px 20px; }
   .divider { height: 1px; background: var(--border); margin-bottom: 20px; }
   .detail-grid { display: grid; gap: 24px; }
   @media(min-width:900px){ .detail-grid { grid-template-columns: 1fr 1fr; } }
 
-  /* ── timeline ── */
   .tl-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
   .tl-step { display: flex; gap: 12px; }
   .tl-dot-col { display: flex; flex-direction: column; align-items: center; }
@@ -103,7 +93,6 @@ const CSS = `
   .tl-label.done { color: var(--fg); }
   .tl-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-  /* ── responder card ── */
   .responder-card { background: rgba(255,255,255,0.05); border-radius: var(--radius-md); padding: 18px; margin-bottom: 14px; }
   .responder-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
   .responder-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--gradient-hero); display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0; }
@@ -111,7 +100,6 @@ const CSS = `
   .responder-type { font-size: 12px; color: var(--muted); }
   .phone-row { display: flex; align-items: center; gap: 8px; font-family: monospace; font-size: 12px; color: var(--fg); }
 
-  /* ── action buttons ── */
   .actions { display: flex; gap: 8px; }
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 18px; height: 44px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: opacity .15s, transform .1s; flex: 1; }
   .btn:hover { opacity: .85; }
@@ -119,19 +107,16 @@ const CSS = `
   .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--fg); }
   .btn-primary { background: var(--gradient-emergency); color: #fff; box-shadow: 0 2px 14px rgba(229,57,53,0.35); }
 
-  /* ── status notice ── */
   .status-notice { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); padding: 14px; margin-top: 12px; }
   .notice-icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; }
 
-  /* ── empty ── */
   .empty { text-align: center; padding: 48px 20px; color: var(--muted); font-size: 14px; }
 
-  /* ── spin ── */
   @keyframes spin { to { transform: rotate(360deg); } }
   .animate-spin { animation: spin 1.2s linear infinite; }
 `;
 
-// data 
+// Static demo data
 const requests = [
   {
     id: "REQ-2847",
@@ -219,109 +204,32 @@ const requests = [
   },
 ];
 
-// icon components (inline SVG) 
+// Icons
 const icons = {
-  Droplet: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-    </svg>
-  ),
-  Truck: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-    </svg>
-  ),
-  Pill: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>
-    </svg>
-  ),
-  Utensils: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
-    </svg>
-  ),
-  Home: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-  ),
-  HeartPulse: () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l1.5-3 2 6 1.5-3h5.27"/>
-    </svg>
-  ),
-  MapPin: ({ size = 14 } = {}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
-    </svg>
-  ),
-  Clock: ({ size = 14 } = {}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  ),
-  Phone: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.07 3.4 2 2 0 0 1 3 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z"/>
-    </svg>
-  ),
-  Check: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  ),
-  X: ({ size = 16 } = {}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-    </svg>
-  ),
-  Loader: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-    </svg>
-  ),
-  PackageCheck: ({ size = 16 } = {}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 2 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>
-    </svg>
-  ),
-  AlertTriangle: () => (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
-    </svg>
-  ),
-  ChevronRight: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m9 18 6-6-6-6"/>
-    </svg>
-  ),
-  Plus: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5v14"/><path d="M5 12h14"/>
-    </svg>
-  ),
-  Eye: () => (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-    </svg>
-  ),
-  CheckCircle: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-    </svg>
-  ),
+  Droplet: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>),
+  Truck: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>),
+  Pill: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>),
+  Utensils: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>),
+  Home: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>),
+  HeartPulse: () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l1.5-3 2 6 1.5-3h5.27"/></svg>),
+  MapPin: ({ size = 14 } = {}) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>),
+  Clock: ({ size = 14 } = {}) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>),
+  Phone: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.15 12 19.79 19.79 0 0 1 1.07 3.4 2 2 0 0 1 3 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 16z"/></svg>),
+  Check: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>),
+  X: ({ size = 16 } = {}) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>),
+  Loader: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>),
+  PackageCheck: ({ size = 16 } = {}) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 2 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg>),
+  AlertTriangle: () => (<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>),
+  ChevronRight: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>),
+  Plus: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>),
+  Eye: () => (<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>),
+  CheckCircle: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>),
 };
 
 const categoryIcons = {
-  blood: icons.Droplet,
-  transport: icons.Truck,
-  medicine: icons.Pill,
-  food: icons.Utensils,
-  shelter: icons.Home,
-  medical: icons.HeartPulse,
+  blood: icons.Droplet, transport: icons.Truck, medicine: icons.Pill,
+  food: icons.Utensils, shelter: icons.Home, medical: icons.HeartPulse,
 };
-
 const categoryColors = {
   blood:     { color: "#E53935", bg: "rgba(229,57,53,0.12)" },
   transport: { color: "#D97706", bg: "rgba(217,119,6,0.12)" },
@@ -330,16 +238,15 @@ const categoryColors = {
   shelter:   { color: "#94A3B8", bg: "rgba(148,163,184,0.12)" },
   medical:   { color: "#DC2626", bg: "rgba(220,38,38,0.12)" },
 };
-
 const statusConfig = {
-  matched:     { label: "Matched",     color: "rgba(229,57,53,0.15)",  border: "rgba(229,57,53,0.35)",  text: "#E53935",  Icon: () => <icons.PackageCheck /> },
-  "in-progress":{ label: "In Progress", color: "rgba(217,119,6,0.15)", border: "rgba(217,119,6,0.35)",  text: "#D97706",  Icon: () => <span className="animate-spin" style={{display:"inline-flex"}}><icons.Loader /></span> },
-  completed:   { label: "Completed",   color: "rgba(22,163,74,0.15)",  border: "rgba(22,163,74,0.35)",  text: "#16A34A",  Icon: () => <icons.CheckCircle /> },
-  cancelled:   { label: "Cancelled",   color: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.25)",text: "#94A3B8",  Icon: () => <icons.X /> },
-  pending:     { label: "Pending",     color: "rgba(124,58,237,0.15)", border: "rgba(124,58,237,0.35)", text: "#7C3AED",  Icon: () => <icons.Clock /> },
+  matched:      { label: "Matched",     color: "rgba(229,57,53,0.15)",  border: "rgba(229,57,53,0.35)",  text: "#E53935", Icon: () => <icons.PackageCheck /> },
+  "in-progress":{ label: "In Progress", color: "rgba(217,119,6,0.15)",  border: "rgba(217,119,6,0.35)",  text: "#D97706", Icon: () => <span className="animate-spin" style={{display:"inline-flex"}}><icons.Loader /></span> },
+  completed:    { label: "Completed",   color: "rgba(22,163,74,0.15)",  border: "rgba(22,163,74,0.35)",  text: "#16A34A", Icon: () => <icons.CheckCircle /> },
+  cancelled:    { label: "Cancelled",   color: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.25)",text: "#94A3B8", Icon: () => <icons.X /> },
+  pending:      { label: "Pending",     color: "rgba(124,58,237,0.15)", border: "rgba(124,58,237,0.35)", text: "#7C3AED", Icon: () => <icons.Clock /> },
 };
 
-// sub-components 
+// Sub-components
 function StatCard({ label, value, color, bg, Icon }) {
   return (
     <div className="card stat-card">
@@ -364,9 +271,7 @@ function Timeline({ steps }) {
               <div className={`tl-dot ${step.done ? "done" : ""}`}>
                 {step.done ? <icons.Check /> : i + 1}
               </div>
-              {!isLast && (
-                <div className={`tl-line ${step.done && steps[i + 1]?.done ? "done" : ""}`} />
-              )}
+              {!isLast && <div className={`tl-line ${step.done && steps[i + 1]?.done ? "done" : ""}`} />}
             </div>
             <div className="tl-body">
               <div className={`tl-label ${step.done ? "done" : ""}`}>{step.label}</div>
@@ -390,10 +295,7 @@ function ResponderCard({ responder }) {
           <div className="responder-name">{responder.name}</div>
           <div className="responder-type">{responder.type}</div>
         </div>
-        <span
-          className="badge"
-          style={{ background: "rgba(22,163,74,0.15)", color: "#16A34A", borderColor: "rgba(22,163,74,0.35)" }}
-        >
+        <span className="badge" style={{ background: "rgba(22,163,74,0.15)", color: "#16A34A", borderColor: "rgba(22,163,74,0.35)" }}>
           {responder.eta}
         </span>
       </div>
@@ -408,8 +310,8 @@ function ResponderCard({ responder }) {
 function RequestItem({ req, isOpen, onToggle }) {
   const CatIcon = categoryIcons[req.category] || icons.HeartPulse;
   const catColor = categoryColors[req.category] || { color: "#94A3B8", bg: "rgba(148,163,184,0.12)" };
-  const status = statusConfig[req.status];
-  const isActive = req.status === "matched" || req.status === "in-progress" || req.status === "pending";
+  const status = statusConfig[req.status] || statusConfig.pending;
+  const isActive = ["matched", "in-progress", "pending"].includes(req.status);
 
   return (
     <div className={`req-item ${isOpen ? "open" : ""}`}>
@@ -420,12 +322,8 @@ function RequestItem({ req, isOpen, onToggle }) {
         <div className="req-meta">
           <div className="req-name">
             <span>{req.title}</span>
-            <span
-              className="badge"
-              style={{ background: status.color, color: status.text, borderColor: status.border }}
-            >
-              <status.Icon />
-              {status.label}
+            <span className="badge" style={{ background: status.color, color: status.text, borderColor: status.border }}>
+              <status.Icon /> {status.label}
             </span>
           </div>
           <div className="req-sub">
@@ -437,9 +335,7 @@ function RequestItem({ req, isOpen, onToggle }) {
           </div>
         </div>
         {req.priority === "CRITICAL" && (
-          <div className="critical-pill">
-            <icons.AlertTriangle /> CRITICAL
-          </div>
+          <div className="critical-pill"><icons.AlertTriangle /> CRITICAL</div>
         )}
         <span className={`chevron ${isOpen ? "open" : ""}`}><icons.ChevronRight /></span>
       </button>
@@ -448,24 +344,15 @@ function RequestItem({ req, isOpen, onToggle }) {
         <div className="req-detail">
           <div className="divider" />
           <div className="detail-grid">
-            {/* Timeline */}
             <Timeline steps={req.timeline} />
-
-            {/* Right side */}
             <div>
               {req.responder && <ResponderCard responder={req.responder} />}
-
               <div className="actions">
                 {isActive && (
-                  <button className="btn btn-outline">
-                    <icons.X size={16} /> Cancel Request
-                  </button>
+                  <button className="btn btn-outline"><icons.X size={16} /> Cancel Request</button>
                 )}
-                <button className="btn btn-outline">
-                  <icons.MapPin size={14} /> View on Map
-                </button>
+                <button className="btn btn-outline"><icons.MapPin size={14} /> View on Map</button>
               </div>
-
               {req.status === "completed" && (
                 <div className="status-notice">
                   <div className="notice-icon" style={{ background: "rgba(22,163,74,0.15)" }}>
@@ -477,7 +364,6 @@ function RequestItem({ req, isOpen, onToggle }) {
                   </div>
                 </div>
               )}
-
               {req.status === "cancelled" && (
                 <div className="status-notice">
                   <div className="notice-icon" style={{ background: "rgba(148,163,184,0.1)" }}>
@@ -497,35 +383,44 @@ function RequestItem({ req, isOpen, onToggle }) {
   );
 }
 
-//  main component 
+// ── Main Component ──
 export default function TrackPage() {
   const navigate = useNavigate();
-  const [expandedId, setExpandedId] = useState("REQ-2847");
-  const [tab, setTab] = useState("all");
+  const [expandedId,     setExpandedId]     = useState("REQ-2847");
+  const [tab,            setTab]            = useState("all");
 
-  // Track progress workflow states
-  const [searchId, setSearchId] = useState("");
+  // ✅ Correct state names — searchId for input, trackError for errors
+  const [searchId,       setSearchId]       = useState("");
   const [trackedRequest, setTrackedRequest] = useState(null);
-  const [trackError, setTrackError] = useState("");
-  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError,     setTrackError]     = useState("");
+  const [trackLoading,   setTrackLoading]   = useState(false);
 
   const handleTrackProgress = async (e) => {
     if (e) e.preventDefault();
-    if (!searchId.trim()) return;
+
+    const trimmed = searchId.trim();
+
+    // ✅ Validate: must be 24-char hex (MongoDB ObjectId)
+    if (!trimmed) {
+      setTrackError("Please enter a Request ID.");
+      return;
+    }
+    if (!/^[a-fA-F0-9]{24}$/.test(trimmed)) {
+      setTrackError("Invalid Request ID. Must be a 24-character hex string (e.g. 6a2d2afb2ea9c46640957dfe).");
+      return;
+    }
 
     setTrackLoading(true);
     setTrackError("");
     setTrackedRequest(null);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/requests/track/${encodeURIComponent(searchId.trim())}`);
+      const res  = await fetch(`${API}/api/requests/track/${trimmed}`);
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to find tracking details");
-      }
+      if (!res.ok) throw new Error(data.message || "Request not found");
       setTrackedRequest(data);
     } catch (err) {
-      console.error(err);
+      console.error("Track error:", err);
       setTrackError(err.message || "Could not fetch tracking status.");
     } finally {
       setTrackLoading(false);
@@ -533,23 +428,23 @@ export default function TrackPage() {
   };
 
   const filtered = tab === "all" ? requests : requests.filter((r) => {
-    if (tab === "active") return r.status === "matched" || r.status === "in-progress" || r.status === "pending";
+    if (tab === "active")    return ["matched", "in-progress", "pending"].includes(r.status);
     if (tab === "completed") return r.status === "completed";
     if (tab === "cancelled") return r.status === "cancelled";
     return true;
   });
 
-  const activeCount    = requests.filter((r) => ["matched","in-progress","pending"].includes(r.status)).length;
+  const activeCount    = requests.filter((r) => ["matched", "in-progress", "pending"].includes(r.status)).length;
   const completedCount = requests.filter((r) => r.status === "completed").length;
 
   const stats = [
-    { label: "Active Requests", value: String(activeCount),  color: "#E53935", bg: "rgba(229,57,53,0.12)",  Icon: () => <span className="animate-spin" style={{display:"inline-flex"}}><icons.Loader /></span> },
-    { label: "Completed",       value: String(completedCount),color: "#16A34A", bg: "rgba(22,163,74,0.12)", Icon: icons.CheckCircle },
-    { label: "Avg Response",    value: "2m 41s",              color: "#7C3AED", bg: "rgba(124,58,237,0.12)",Icon: icons.Clock },
-    { label: "Success Rate",    value: "96%",                 color: "#D97706", bg: "rgba(217,119,6,0.12)", Icon: () => <icons.PackageCheck size={20} /> },
+    { label: "Active Requests", value: String(activeCount),   color: "#E53935", bg: "rgba(229,57,53,0.12)",  Icon: () => <span className="animate-spin" style={{display:"inline-flex"}}><icons.Loader /></span> },
+    { label: "Completed",       value: String(completedCount),color: "#16A34A", bg: "rgba(22,163,74,0.12)",  Icon: icons.CheckCircle },
+    { label: "Avg Response",    value: "2m 41s",              color: "#7C3AED", bg: "rgba(124,58,237,0.12)", Icon: icons.Clock },
+    { label: "Success Rate",    value: "96%",                 color: "#D97706", bg: "rgba(217,119,6,0.12)",  Icon: () => <icons.PackageCheck size={20} /> },
   ];
 
-  const TABS = ["all","active","completed","cancelled"];
+  const TABS = ["all", "active", "completed", "cancelled"];
 
   return (
     <>
@@ -560,34 +455,31 @@ export default function TrackPage() {
             <div className="shell-title">Track My Requests</div>
             <div className="shell-sub">Real-time status of all your emergency requests and deliveries</div>
           </div>
-          <button className="btn btn-primary" style={{ flex: "none", width: "auto" }} onClick={()=>(navigate("/request"))}>
+          <button className="btn btn-primary" style={{ flex: "none", width: "auto" }} onClick={() => navigate("/request")}>
             <icons.Plus /> New Request
           </button>
         </div>
 
-        {/* Search Progress Tracking UI */}
-        <div className="card" style={{ padding: 24, marginBottom: 24, background: "var(--surface)" }}>
+        {/* Track by ID */}
+        <div className="card" style={{ padding: 24, marginBottom: 24 }}>
           <h3 style={{ fontSize: 18, fontFamily: "var(--font-display)", marginBottom: 8 }}>🔍 Track Request Progress</h3>
           <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>
-            Enter your Request ID (e.g. REQ-2847) or requester name to get real-time tracking details.
+            Enter your MongoDB Request ID (24-character hex) to get real-time tracking details.
           </p>
-          <form onSubmit={handleTrackProgress} style={{ display: "flex", gap: 12 }}>
+          <form onSubmit={handleTrackProgress} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="e.g. REQ-2847 or Mrs. Mehta"
+              placeholder="e.g. 6a2d2afb2ea9c46640957dfe"
               value={searchId}
-              onChange={(e) => setSearchId(e.target.value)}
+              onChange={(e) => { setSearchId(e.target.value); setTrackError(""); }}
               style={{
-                flex: 1,
+                flex: 1, minWidth: 200,
                 background: "rgba(255,255,255,0.05)",
-                border: "1px solid var(--border)",
+                border: `1px solid ${trackError ? "#E53935" : "var(--border)"}`,
                 borderRadius: "var(--radius-sm)",
-                color: "var(--fg)",
-                padding: "12px 16px",
-                fontSize: 14,
-                outline: "none"
+                color: "var(--fg)", padding: "12px 16px",
+                fontSize: 14, outline: "none", fontFamily: "monospace",
               }}
-              required
             />
             <button
               type="submit"
@@ -595,32 +487,39 @@ export default function TrackPage() {
               className="btn btn-primary"
               style={{ flex: "none", width: "auto", padding: "0 24px" }}
             >
-              {trackLoading ? "Tracking..." : "Track Status"}
+              {trackLoading
+                ? <><span className="animate-spin" style={{display:"inline-flex"}}><icons.Loader /></span> Tracking...</>
+                : "Track Status"
+              }
             </button>
           </form>
 
+          {/* Error */}
           {trackError && (
             <div style={{ color: "#ef4444", fontSize: 13, marginTop: 12, fontWeight: 500 }}>
               ⚠️ {trackError}
             </div>
           )}
 
+          {/* Result */}
           {trackedRequest && (
             <div style={{ marginTop: 24, border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 20, background: "rgba(255,255,255,0.02)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                 <h4 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-                  📋 {trackedRequest.title || "Emergency Request"} ({trackedRequest.id || "N/A"})
+                  📋 {trackedRequest.title || trackedRequest.resourceType || "Emergency Request"}
                 </h4>
                 <span className="badge" style={{ background: "rgba(229,57,53,0.15)", color: "#E53935", border: "1.5px solid rgba(229,57,53,0.35)", padding: "4px 10px" }}>
                   {trackedRequest.status?.toUpperCase() || "PENDING"}
                 </span>
               </div>
               <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-                📍 {trackedRequest.location} · Priority: {trackedRequest.priority?.toUpperCase() || "MED"}
+                📍 {trackedRequest.location} · Priority: {trackedRequest.urgency?.toUpperCase() || "MEDIUM"}
               </p>
-              
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <Timeline steps={trackedRequest.timeline || []} />
+                {trackedRequest.timeline?.length > 0
+                  ? <Timeline steps={trackedRequest.timeline} />
+                  : <p style={{ fontSize: 13, color: "var(--muted)" }}>No timeline available yet.</p>
+                }
                 {trackedRequest.responder && (
                   <div style={{ marginTop: 12 }}>
                     <ResponderCard responder={trackedRequest.responder} />
@@ -631,12 +530,12 @@ export default function TrackPage() {
           )}
         </div>
 
-        {/* Summary */}
+        {/* Summary stats */}
         <div className="summary-grid">
           {stats.map((s) => <StatCard key={s.label} {...s} />)}
         </div>
 
-        {/* Request list */}
+        {/* Request history list */}
         <div className="card">
           <div className="list-header">
             <div className="list-title">Request History</div>
@@ -648,7 +547,6 @@ export default function TrackPage() {
               ))}
             </div>
           </div>
-
           <div className="req-list">
             {filtered.length === 0 && (
               <div className="empty">

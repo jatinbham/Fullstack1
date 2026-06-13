@@ -87,6 +87,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -96,12 +98,41 @@ export default function LoginPage() {
     setError("");
 
     try {
+      if (tab === "phone") {
+        if (!otpSent) {
+          // 1. Send OTP
+          const res = await fetch("http://localhost:5001/api/auth/send-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contact: phone }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || "Failed to send OTP");
+          setOtpSent(true);
+          setLoading(false);
+          return;
+        } else {
+          // 2. Verify OTP & Login
+          const res = await fetch("http://localhost:5001/api/auth/verify-otp-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, otp }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || "Invalid OTP");
+          loginUser(data, data.token);
+          navigate("/dashboard");
+          return;
+        }
+      }
+
+      // Email Login
       const loginPayload = {
-        email: tab === "email" ? email : phone,
-        password: tab === "email" ? password : "otp_simulated_password", // Backend checks both email and phone
+        emailOrPhone: email,
+        password: password,
       };
 
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch("http://localhost:5001/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -246,7 +277,7 @@ export default function LoginPage() {
             marginBottom: 20,
           }}>
             {["email", "phone"].map(t => (
-              <button key={t} onClick={() => setTab(t)} style={{
+              <button key={t} type="button" onClick={() => { setTab(t); setOtpSent(false); setOtp(""); setError(""); }} style={{
                 padding: "9px 0", borderRadius: 9, border: "none",
                 background: tab === t ? C.card : "transparent",
                 color: tab === t ? C.text : C.muted,
@@ -321,10 +352,27 @@ export default function LoginPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
+                      disabled={otpSent}
                     />
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted }}>
+
+                {otpSent && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 6, marginTop: 12 }}>Enter OTP</div>
+                    <input
+                      type="text"
+                      placeholder="123456"
+                      style={input}
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      required
+                      maxLength={6}
+                    />
+                  </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted, marginTop: 6 }}>
                   <ShieldCheck size={14} color={C.success} />
                   Standard SMS rates apply.
                 </div>
@@ -332,7 +380,7 @@ export default function LoginPage() {
             )}
 
             <button type="submit" disabled={loading} style={btnPrimary}>
-              {loading ? "Authenticating..." : tab === "email" ? "Sign in" : "Sign in with Phone"}
+              {loading ? "Please wait..." : tab === "email" ? "Sign in" : (!otpSent ? "Send OTP" : "Verify & Sign in")}
               <ArrowRight size={16} />
             </button>
           </form>
